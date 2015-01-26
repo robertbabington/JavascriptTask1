@@ -1,67 +1,226 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>rectangles.html</title>
-<script type="text/javascript">
+    <title>rectangles.html</title>
+    <script type="text/javascript">
 
+        var	nRectangles = 3,
+                containerWidth = 600,
+                containerHeight = 600,
+                minRectDim = 50,
+                maxRectDim = 100;
 
-var	nRectangles = 3,
-	containerWidth = 600,
-	containerHeight = 600,
-	minRectDim = 50,
-	maxRectDim = 100;
+        var container = {}, rectObj = {};
 
-/*
-Specifications:
+        function randomColour() {
+            return 'rgb(' +
+                    (Math.floor(Math.random() * 256)) + ','
+                    + (Math.floor(Math.random() * 256)) + ','
+                    + (Math.floor(Math.random() * 256)) +
+                    ')';
+        }
 
-	- The above pseudo-constant values may vary. However, it is guaranteed that:
+        function createContainer() {
+            // Create container div
+            container = document.createElement('div');
+            // Apply auto width and height dimensions
+            container.style.width = 'auto';
+            container.style.minWidth = containerWidth + 'px';
+            container.style.height = 'auto';
+            container.style.minHeight = containerHeight + 'px';
+            // Position container in top left of window
+            container.style.position = 'absolute';
+            container.style.top = 0;
+            container.style.left = 0;
+            // Get random background colour as RGB
+            container.style.background = randomColour();
+            // Append container to body
+            document.body.appendChild(container);
+        }
 
-		a) containerWidth >= (nRectangles x maxRectDim)
-			and
-		b) containerHeight >= (nRectangles x maxRectDim)
+        function rectangleDimension() {
+            var dimension = Math.floor(Math.random()*100);
+            // If the dimension breaks the min or max RectDim
+            // run the function again.
+            if (dimension < 50 || dimension > 100) {
+                return rectangleDimension();
+            } else {
+                return dimension;
+            }
+        }
 
-		so that the "on load" processing below is always possible.
+        function getLocation (element) {
+            var elem = element;
+            var height = elem.offsetHeight;
+            var width = elem.offsetWidth;
 
-	- The action takes place in a (containerWidth x containerHeight) container random-color div with top-left border at 0,0 screen (window) coordinates.
+            var x = 0;
+            var y = 0;
 
-	- On load, nRectangles random-sized (each side minRectDim to maxRectDim pixels included) and random-color rectangles are displayed according to the following rules:
-	
-		a) They must not overlap each other
-		b) They must be fully contained within the container div
-		c) Their position is random, given the above two constraints
+            while(elem && !isNaN(elem.offsetLeft) && !isNaN(elem.offsetTop)) {
+                x += elem.offsetLeft - elem.scrollLeft;
+                y += elem.offsetTop - elem.scrollTop;
+                elem = elem.offsetParent;
+            }
 
-		The mouse cursor position at load is ignored.
+            return [
+                [x, (x+width)],
+                [y, (y+height)]
+            ];
+        }
 
-	- Each time a mouse cursor is positioned over a rectangle, it must change color to a new random color.
+        /**
+         * The doComparison function takes in an array of coordinates
+         * from two elements, and returns a boolean.
+         */
+        function doComparison(co1, co2) {
+            var result1, result2;
+            result1 = co1[0] < co2[0] ? co1 : co2;
+            result2 = co1[0] < co2[0] ? co2 : co1;
+            return result1[1] > result2[0] || result1[0] === result2[0];
+        }
 
-	- If the cursor remains over a rectangle for 3 seconds, the rectangle is re-positioned (no animation) in such a way that:
+        /**
+         * The checkOverlapping function checks to see if
+         * the rectangles cross paths by finding their location on the page
+         * and comparing the coordinates. The function returns a boolean.
+         */
+        function checkOverlapping(elem) {
+            var coordinates = getLocation(elem);
 
-		a) It is no longer under the mouse cursor position
-		b) It is still fully visible within the container div
-		c) It does not overlap with the other rectangles
+            for(var key in rectObj) {
+                if(rectObj.hasOwnProperty(key)) {
+                    if(elem != rectObj[key]) {
 
-			Should these be impossible, the rectangle is permanently removed
+                        var loopRect = rectObj[key];
+                        var keyCoordinates = getLocation(loopRect);
 
-		d) The new position is random, given the above three constraints
+                        return doComparison(coordinates[0], keyCoordinates[0]) &&
+                                doComparison(coordinates[1], keyCoordinates[1]);
 
+                    }
+                }
+            }
+        }
 
-Further notes:
+        /**
+         * The randomRectLocation function finds a random location inside
+         * the container by determining the dimensions of the container
+         * and the dimensions of the rectangle, and saying that the rectangle
+         * must be placed:
+         * a) within the width and height constraints of the container
+         * b) minus the width/height of the rectangle.
+         */
+        function randomRectLocation(rectangle, side) {
+            try {
+                var computedSide = window.getComputedStyle(container, '')[side].replace('px', '');
 
-	- You may use a framework, yet raw DOM would be appreciated.
+                var rectSide = rectangle.style[side].replace('px', '');
 
-	- Focus on clean and readable/understandable code before focusing on performance.
+                var position = Math.floor(Math.random() * computedSide);
 
-	- Once done, we will ask to expose /viva voice/ the way you have proceeded to write the program.
-*/
+                var range = computedSide - rectSide;
 
-/* Please write your JavaScript code here */
+                if (position >= range) {
+                    return randomRectLocation(side)
+                } else {
+                    return position;
+                }
+            } catch(e) {
+                console.log(e);
+            }
+        }
 
-</script>
-<!-- If using a framework, please insert <script src> here -->
+        function setPosition(rectangle) {
+            rectangle.style.position = 'inherit';
+            rectangle.style.left = randomRectLocation(rectangle, 'width') + 'px';
+            rectangle.style.top = randomRectLocation(rectangle, 'height') + 'px';
+
+            if (checkOverlapping(rectangle) == true) {
+                container.removeChild(rectangle);
+                console.log('Could not reposition. Removed rectangle.');
+            }
+        }
+
+        function createRectangle() {
+            var rectangle = document.createElement('div');
+
+            // Apply width and height constraints to rectangle
+            rectangle.style.minWidth = minRectDim;
+            rectangle.style.width = rectangleDimension() + 'px';
+            rectangle.style.maxWidth = maxRectDim;
+            rectangle.style.minHeight = minRectDim;
+            rectangle.style.height = rectangleDimension() + 'px';
+            rectangle.style.maxHeight = maxRectDim;
+
+            // Get random background colour as RGB
+            rectangle.style.background = randomColour();
+
+            // Event listener to handle mouseenter:
+            // get new random background colour.
+            rectangle.addEventListener('mouseenter', function () {
+                this.style.background = randomColour();
+            });
+
+            /**
+             * When the mouse moves over the rectangle,
+             * start an interval which increments 'counter'.
+             * After 3 seconds, reposition the rectangle
+             * and stop the interval. If the new position overlaps
+             * another rectangle, delete the rectangle.
+             */
+            var interval;
+            rectangle.addEventListener('mouseover', function () {
+                var counter = 0;
+                interval = setInterval(function () {
+                    if (counter <= 2) {
+                        counter++;
+                    } else {
+                        setPosition(rectangle);
+                        clearInterval(interval);
+                    }
+                }, 1000);
+            });
+
+            /**
+             * If the mouse leaves the rectangle before the 3 seconds
+             * have passed, cancel the interval.
+             */
+            rectangle.addEventListener('mouseleave', function () {
+                clearInterval(interval);
+            });
+
+            return rectangle;
+
+        }
+
+        function appendRectangles() {
+            // Loop to create nRectangles
+            for(var rect=0; rect<nRectangles; rect++) {
+                // Append a rectangle to rectObj
+                rectObj['rect' + (rect + 1)] = {};
+                rectObj['rect' + (rect + 1)] = createRectangle();
+
+                /**
+                 * Append rectangle to container element before setting its position
+                 * because the setPosition function requires the rectangle to be appended
+                 * to the container.
+                 */
+                container.appendChild(rectObj['rect' + (rect + 1)]);
+                setPosition(rectObj['rect' + (rect + 1)]);
+
+            }
+        }
+
+        window.onload = function() {
+            createContainer();
+            appendRectangles();
+        }
+
+    </script>
+
 </head>
-<body><!-- 
+<body>
 
-	No HTML here! Everything must be written in JavaScript.
-	
---></body>
+</body>
 </html>
